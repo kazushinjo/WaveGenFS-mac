@@ -34,6 +34,13 @@ final class WavePanel: NSBox {
 
     static let valueMax = 32767.0
 
+    /// 倍数設定の基準の波形 (Wave1。6 系統以上使うときは Windows 版と同じく Wave6〜8 は Wave5)。基準自身は nil
+    static func multipleBase(_ i: Int) -> Int? {
+        if i == 0 { return nil }
+        if MainWindowController.usedWaves > 5 && i >= 4 { return i == 4 ? nil : 4 }
+        return 0
+    }
+
     init(index: Int, model: WaveModel) {
         self.index = index; self.model = model
         super.init(frame: .zero)
@@ -108,8 +115,8 @@ final class WavePanel: NSBox {
         for n in Ui.fftNs { fftMenu.addItem(ClosureMenuItem("\(n)") { Ui.fftN = n }) }
         nItem.submenu = fftMenu
         m.addItem(nItem)
-        if index != 0 && index != 4 {
-            let baseW = index < 4 ? 1 : 5
+        if let b = WavePanel.multipleBase(index) {
+            let baseW = b + 1
             let mul = NSMenuItem(title: "Wave\(baseW) の倍数", action: nil, keyEquivalent: "")
             let sm = NSMenu()
             for x in [2, 3, 4, 5, 6, 8, 10] {

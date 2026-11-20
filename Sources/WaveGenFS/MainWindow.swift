@@ -24,8 +24,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
     static let fsList = [8000, 11025, 16000, 22050, 32000, 44100, 48000, 88200, 96000, 176400, 192000, 384000]
     static let bitsNames = ["16", "24", "32 float"]
     static let bitsList = [16, 24, 32]
-    /// 画面に出す波形の数 (Wave1〜4)。設定ファイルは Windows 版と同じ 8 系統のまま、3 以降は常に OFF
-    static let usedWaves = 4
+    /// 画面に出す波形の数 (Wave1〜5)。設定ファイルは Windows 版と同じ 8 系統のまま、3 以降は常に OFF
+    static let usedWaves = 5
 
     private let settingsURL: URL = {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("WaveGenFS")
@@ -170,7 +170,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
             p.changed = { [unowned self] in applyAll(i) }
             p.detailRequested = { [unowned self] pn in showDetail(pn) }
             p.multipleRequested = { [unowned self] pn, x in
-                let b = pn.index < 4 ? 0 : 4
+                let b = WavePanel.multipleBase(pn.index) ?? 0
                 model.waves[pn.index].freq = model.waves[b].freq * Double(x)
                 pn.load()
                 applyAll(pn.index)
