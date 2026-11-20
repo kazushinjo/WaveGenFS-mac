@@ -24,8 +24,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
     static let fsList = [8000, 11025, 16000, 22050, 32000, 44100, 48000, 88200, 96000, 176400, 192000, 384000]
     static let bitsNames = ["16", "24", "32 float"]
     static let bitsList = [16, 24, 32]
-    /// 画面に出す波形の数 (Wave1〜5)。設定ファイルは Windows 版と同じ 8 系統のまま、3 以降は常に OFF
-    static let usedWaves = 5
+    /// 表示する波形の数 (1〜maxWaves、画面で変更)。隠れた波形は設定を残したまま出力しない
+    static var usedWaves = 5
+    static let maxWaves = 5
 
     private let settingsURL: URL = {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("WaveGenFS")
@@ -40,6 +41,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
     private var panels: [WavePanel] = []
     private var details: [DetailWindow?] = Array(repeating: nil, count: Synth.nWaves)
     private var levelLbl: [NSTextField] = []
+    private var levelNum: [NSTextField] = []
+    private let cbCount = ClosurePopup.make((1...MainWindowController.maxWaves).map { "\($0)" }, width: 56)
+    private let panelRow = NSStackView()
     private let outLbl = Ui.label("")
     private var bPlay: NSButton!, bFull: NSButton!, bHide: NSButton!
     private var chkAtt: NSButton!, chkFullVol: NSButton!, bSplit: ClosureButton!
@@ -90,7 +94,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
             w[0].type = .sine; w[0].ampDb = -10
             cfg.waves = w
         }
-        for i in MainWindowController.usedWaves..<Synth.nWaves { cfg.waves![i] = WaveParams() }
+        MainWindowController.usedWaves = min(max(cfg.waveCount, 1), MainWindowController.maxWaves)
         model = WaveModel(cfg.waves!)
     }
 
@@ -175,10 +179,13 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
                 pn.load()
                 applyAll(pn.index)
             }
+            p.setContentCompressionResistancePriority(.required, for: .vertical)
             panels.append(p)
         }
-        let panelRow = Ui.hstack(Array(panels[0..<MainWindowController.usedWaves]), spacing: 8)
-        panelRow.alignment = .top
+        panelRow.orientation = .horizontal; panelRow.alignment = .top; panelRow.spacing = 8
+        cbCount.selectItem(at: MainWindowController.usedWaves - 1)
+        cbCount.toolTip = "表示する Wave の数。隠した Wave は設定を残したまま出力しない"
+        cbCount.onChange = { [unowned self] i in setWaveCount(i + 1) }
 
         cbDisp.selectItem(at: min(max(cfg.dispCh, 0), 2))
         cbDisp.onChange = { [unowned self] i in cfg.dispCh = i; scope.dispCh = i; updateSplit() }
@@ -188,10 +195,11 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
         bSplit.state = cfg.splitLR ? .on : .off
         bSplit.onClick = { [unowned self] b in cfg.splitLR = b.state == .on; updateSplit() }
         bSplit.toolTip = "L と R を上下に分けて表示 (表示ch が Lch + Rch・Stereo のとき) (⌘D)"
-        var lv: [NSView] = [L("表示ch"), cbDisp, bSplit, spacer(10), L("Level (dBFS rms)")]
+        var lv: [NSView] = [L("Wave数"), cbCount, spacer(10), L("表示ch"), cbDisp, bSplit, spacer(10), L("Level (dBFS rms)")]
         for i in 0..<Synth.nWaves {
-            if i >= MainWindowController.usedWaves { levelLbl.append(NSTextField(labelWithString: "")); continue }
-            lv.append(L("\(i + 1):"))
+            let num = L("\(i + 1):")
+            levelNum.append(num)
+            lv.append(num)
             let l = NSTextField(labelWithString: "")
             l.alignment = .right
             l.isBordered = true; l.drawsBackground = true; l.backgroundColor = .textBackgroundColor
@@ -214,6 +222,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
         }
         scope.toolTip = "スクロール: 時間軸  ⌘+スクロール: 振幅軸  ダブルクリック: 全画面波形表示\nF11: 全画面  F12: 波形のみ  Esc: 戻る  F5: 再生/停止"
 
+        layoutPanels()
         controlsStack = NSStackView(views: [row1, row2, panelRow, levelRow])
         controlsStack.orientation = .vertical
         controlsStack.alignment = .leading
@@ -235,7 +244,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
             scope.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             scope.trailingAnchor.constraint(equalTo: root.trailingAnchor),
             scope.bottomAnchor.constraint(equalTo: root.bottomAnchor),
-            scope.heightAnchor.constraint(greaterThanOrEqualToConstant: 200),
+            scope.heightAnchor.constraint(greaterThanOrEqualToConstant: 120),
         ])
         window?.contentView = root
         // 初期サイズ: 操作部が全部見える幅 + 波形 340
@@ -269,6 +278,45 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
 
     @objc private func commentChanged() { cfg.comment = String(tbComment.stringValue.prefix(80)) }
 
+    // ---------------------------------------------------------------- 表示する Wave の数
+    /// 実際に出力する波形 (表示していない Wave は OFF)
+    private var shownWaves: [WaveParams] { (0..<Synth.nWaves).map { act($0) } }
+    private func act(_ i: Int) -> WaveParams { i < MainWindowController.usedWaves ? model.waves[i] : WaveParams() }
+
+    private func layoutPanels() {
+        let n = MainWindowController.usedWaves
+        for v in panelRow.arrangedSubviews { v.removeFromSuperview() }
+        for i in 0..<n { panelRow.addArrangedSubview(panels[i]) }
+        for i in 0..<Synth.nWaves {
+            levelNum[i].isHidden = i >= n; levelLbl[i].isHidden = i >= n
+            if i >= n { details[i]?.close() }
+        }
+    }
+
+    private func setWaveCount(_ n: Int) {
+        MainWindowController.usedWaves = min(max(n, 1), MainWindowController.maxWaves)
+        cfg.waveCount = MainWindowController.usedWaves
+        cbCount.selectItem(at: MainWindowController.usedWaves - 1)
+        layoutPanels()
+        fitWindowHeight()
+        applyAll()
+    }
+
+    /// 操作部が全部入る高さまでウインドウを広げる (画面に収まる範囲で)
+    private func fitWindowHeight() {
+        guard let w = window, let root = w.contentView, !isFullScreen else { return }
+        root.layoutSubtreeIfNeeded()
+        let need = controlsStack.fittingSize.height + 160
+        let cur = root.frame.height
+        guard need > cur, let vis = (w.screen ?? NSScreen.main)?.visibleFrame else { return }
+        var f = w.frame
+        let add = min(need - cur, vis.height - f.height)
+        guard add > 0 else { return }
+        f.size.height += add
+        f.origin.y = max(vis.minY, f.origin.y - add)
+        w.setFrame(f, display: true, animate: false)
+    }
+
     // ---------------------------------------------------------------- クリップ防止
     // 各チャンネルで「全波形の最大瞬間値の合計」が 1 (100%) を超えないよう制限する。
     private let tol = 1e-9
@@ -276,12 +324,12 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
     private func othersPeak(_ i: Int, _ c: Int) -> Double {
         let mono = !cfg.stereo
         var sum = 0.0
-        for j in 0..<Synth.nWaves where j != i && model.waves[j].feeds(mono)[c] { sum += model.waves[j].peakLin }
+        for j in 0..<Synth.nWaves where j != i && act(j).feeds(mono)[c] { sum += act(j).peakLin }
         return sum
     }
 
     private func headroom(_ i: Int) -> Double {
-        let f = model.waves[i].feeds(!cfg.stereo)
+        let f = act(i).feeds(!cfg.stereo)
         var h = 1.0
         for c in 0..<2 where f[c] { h = min(h, 1 - othersPeak(i, c)) }
         return max(0, h)
@@ -292,7 +340,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
 
     private func violates(_ c: Int) -> Bool {
         var sum = 0.0
-        for j in 0..<Synth.nWaves where model.waves[j].feeds(!cfg.stereo)[c] { sum += model.waves[j].peakLin }
+        for j in 0..<Synth.nWaves where act(j).feeds(!cfg.stereo)[c] { sum += act(j).peakLin }
         return sum > 1 + tol
     }
 
@@ -305,10 +353,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
             let c = violates(0) ? 0 : 1
             let mono = !cfg.stereo
             let k: Int
-            if changed >= 0 && model.waves[changed].type != .off && model.waves[changed].feeds(mono)[c] { k = changed }
+            if changed >= 0 && act(changed).type != .off && act(changed).feeds(mono)[c] { k = changed }
             else {
-                k = (0..<Synth.nWaves).filter { model.waves[$0].type != .off && model.waves[$0].feeds(mono)[c] }
-                    .max { model.waves[$0].peakLin < model.waves[$1].peakLin }!
+                k = (0..<Synth.nWaves).filter { act($0).type != .off && act($0).feeds(mono)[c] }
+                    .max { act($0).peakLin < act($1).peakLin }!
             }
             let room = headroom(k)
             var p = model.waves[k]
@@ -323,7 +371,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
         }
         // 入力欄の上限を更新
         for i in 0..<Synth.nWaves {
-            let p = model.waves[i]
+            let p = act(i)
             let room = headroom(i)
             var ampMax = (room - abs(p.offsetPct) / 100) / p.amFactor
             var offMax = MainWindowController.floor1((room - (p.type == .off ? 0 : p.ampLin * p.amFactor)) * 100)
@@ -334,7 +382,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
 
     private func applyAll(_ changed: Int = -1) {
         enforce(changed)
-        if player.isPlaying, let s = player.synth { s.params = model.waves }
+        if player.isPlaying, let s = player.synth { s.params = shownWaves }
         updateScope()
         updateLevels()
     }
@@ -342,7 +390,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
     private func updateScope() {
         let fs = cfg.fs
         let n = Int(ceil(scope.spanMs * Double(fs) / 1000)) + 2
-        let syn = Synth(fs: fs, params: model.waves, mono: !cfg.stereo, gain: attGain)
+        let syn = Synth(fs: fs, params: shownWaves, mono: !cfg.stereo, gain: attGain)
         var (L, R) = syn.render(frames: n)
         // 実際の出力と同じく ±100% でクリップした波形を表示
         var clipped = false
@@ -353,7 +401,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
         scope.waveClipped = clipped
         scope.L = L; scope.R = R; scope.fs = fs; scope.mono = !cfg.stereo
         if bSplit != nil { updateSplit() }
-        scope.overlay = model.waves.enumerated().compactMap { i, p in p.summary().map { "W\(i + 1): \($0)" } }
+        scope.overlay = shownWaves.enumerated().compactMap { i, p in p.summary().map { "W\(i + 1): \($0)" } }
         updateStatus()
         scope.needsDisplay = true
     }
@@ -375,7 +423,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
     private func updateLevels() {
         let fs = cfg.fs, n = max(4096, fs / 4)
         for i in 0..<Synth.nWaves {
-            var p = model.waves[i]
+            var p = act(i)
             if p.type == .off { levelLbl[i].stringValue = ""; continue }
             p.delaySamples = 0
             var ps = [WaveParams](repeating: WaveParams(), count: Synth.nWaves)
@@ -409,7 +457,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
     private func startPlay() {
         do {
             player.stop()
-            let syn = Synth(fs: cfg.fs, params: model.waves, mono: !cfg.stereo, gain: attGain)
+            let syn = Synth(fs: cfg.fs, params: shownWaves, mono: !cfg.stereo, gain: attGain)
             let dev = cbDev.indexOfSelectedItem > 0 ? devices[cbDev.indexOfSelectedItem - 1].id : nil
             try player.start(synth: syn, device: dev, latencyMs: cfg.latencyMs, fullVolume: cfg.fullVolume)
             bPlay.title = "■ 停止 (F5)"
@@ -444,7 +492,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
             NSCursor.operationNotAllowed.push()
             defer { NSCursor.pop() }
             do {
-                try Synth.writeWav(url: url, params: model.waves, fs: cfg.fs, bits: cfg.bits, ch: cfg.stereo ? 2 : 1,
+                try Synth.writeWav(url: url, params: shownWaves, fs: cfg.fs, bits: cfg.bits, ch: cfg.stereo ? 2 : 1,
                                    seconds: cfg.lengthSec, gain: attGain)
                 cfg.lastWavDir = url.deletingLastPathComponent().path
             } catch {
@@ -486,10 +534,15 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
             }
             let wasPlaying = player.isPlaying
             if wasPlaying { stopPlay() }
-            let dropped = (MainWindowController.usedWaves..<Synth.nWaves).filter { (ws[$0]?.type ?? .off) != .off }
+            let mx = MainWindowController.maxWaves
+            let dropped = (mx..<Synth.nWaves).filter { (ws[$0]?.type ?? .off) != .off }
             for i in 0..<Synth.nWaves {
-                model.waves[i] = i < MainWindowController.usedWaves ? ws[i] ?? WaveParams() : WaveParams()
+                model.waves[i] = i < mx ? ws[i] ?? WaveParams() : WaveParams()
                 details[i]?.close()
+            }
+            // 使っている Wave が隠れていれば表示数を増やす
+            if let last = (0..<Synth.nWaves).last(where: { model.waves[$0].type != .off }), last >= MainWindowController.usedWaves {
+                setWaveCount(last + 1)
             }
             cfg.fftN = Ui.fftNs.contains(pf.fftN) ? pf.fftN : 4096
             Ui.fftN = cfg.fftN
@@ -509,7 +562,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
             NSDocumentController.shared.noteNewRecentDocumentURL(url)
             if wasPlaying { startPlay() }
             if !dropped.isEmpty {
-                alert("Wave1〜\(MainWindowController.usedWaves) だけ読み込みました", "このファイルの " + dropped.map { "Wave\($0 + 1)" }.joined(separator: ", ") +
+                alert("Wave1〜\(mx) だけ読み込みました", "このファイルの " + dropped.map { "Wave\($0 + 1)" }.joined(separator: ", ") +
                       " は Mac 版では使わないため OFF にしました。")
             }
         } catch {
@@ -528,7 +581,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
             guard r == .OK, let url = dlg.url else { return }
             var pf = ParamFile()
             pf.comment = cfg.comment; pf.fs = cfg.fs; pf.bits = cfg.bits; pf.stereo = cfg.stereo; pf.lengthSec = cfg.lengthSec
-            pf.fftN = Ui.fftN; pf.attOn = cfg.attOn; pf.attN = cfg.attN; pf.waves = model.waves
+            pf.fftN = Ui.fftN; pf.attOn = cfg.attOn; pf.attN = cfg.attN; pf.waves = shownWaves
             do {
                 let enc = JSONEncoder(); enc.outputFormatting = [.prettyPrinted]
                 try enc.encode(pf).write(to: url)

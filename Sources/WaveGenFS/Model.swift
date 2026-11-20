@@ -124,12 +124,13 @@ struct AppSettings: Codable {
     var comment = ""
     var lastParamDir = ""
     var splitLR = false
+    var waveCount = 5
 
     enum CodingKeys: String, CodingKey {
         case waves = "Waves", fs = "Fs", bits = "Bits", stereo = "Stereo", device = "Device", lengthSec = "LengthSec"
         case latencyMs = "LatencyMs", spanIdx = "SpanIdx", yZoomIdx = "YZoomIdx", dispCh = "DispCh", tabIdx = "TabIdx"
         case lastWavDir = "LastWavDir", startFullScreen = "StartFullScreen", fftN = "FftN", attOn = "AttOn", attN = "AttN"
-        case fullVolume = "FullVolume", comment = "Comment", lastParamDir = "LastParamDir", splitLR = "SplitLR"
+        case fullVolume = "FullVolume", comment = "Comment", lastParamDir = "LastParamDir", splitLR = "SplitLR", waveCount = "WaveCount"
     }
 
     init() {}
@@ -143,7 +144,7 @@ struct AppSettings: Codable {
         g(.latencyMs, &s.latencyMs); g(.spanIdx, &s.spanIdx); g(.yZoomIdx, &s.yZoomIdx); g(.dispCh, &s.dispCh)
         g(.tabIdx, &s.tabIdx); g(.lastWavDir, &s.lastWavDir); g(.startFullScreen, &s.startFullScreen); g(.fftN, &s.fftN)
         g(.attOn, &s.attOn); g(.attN, &s.attN); g(.fullVolume, &s.fullVolume); g(.comment, &s.comment)
-        g(.lastParamDir, &s.lastParamDir); g(.splitLR, &s.splitLR)
+        g(.lastParamDir, &s.lastParamDir); g(.splitLR, &s.splitLR); g(.waveCount, &s.waveCount)
         self = s
     }
 }

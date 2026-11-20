@@ -7,7 +7,7 @@ final class WaveModel {
 }
 
 /// 1系統の基本設定パネル。詳細はボタンから DetailWindow。
-final class WavePanel: NSBox {
+final class WavePanel: NSView {
     let index: Int
     let model: WaveModel
     var P: WaveParams {
@@ -31,21 +31,19 @@ final class WavePanel: NSBox {
     private var ampMaxLin = 10.0, offMaxPct = 100.0
     private var fitItem: NSMenuItem!
     private var fftMenu: NSMenu!
+    private var mulItem: NSMenuItem?
 
     static let valueMax = 32767.0
 
-    /// 倍数設定の基準の波形 (Wave1。6 系統以上使うときは Windows 版と同じく Wave6〜8 は Wave5)。基準自身は nil
+    /// 倍数設定の基準の波形 (Wave1)。基準自身は nil
     static func multipleBase(_ i: Int) -> Int? {
         if i == 0 { return nil }
-        if MainWindowController.usedWaves > 5 && i >= 4 { return i == 4 ? nil : 4 }
         return 0
     }
 
     init(index: Int, model: WaveModel) {
         self.index = index; self.model = model
         super.init(frame: .zero)
-        title = "Wave\(index + 1)"
-        titleFont = .boldSystemFont(ofSize: NSFont.systemFontSize)
         translatesAutoresizingMaskIntoConstraints = false
 
         bDetail.bezelStyle = .rounded
@@ -65,8 +63,29 @@ final class WavePanel: NSBox {
         grid.cell(atColumnIndex: 1, rowIndex: 5).row?.mergeCells(in: NSRange(location: 1, length: 2))
         for r in 0..<grid.numberOfRows { grid.row(at: r).yPlacement = .center }
         grid.column(at: 2).width = 62
-        contentView = grid
-        contentViewMargins = NSSize(width: 6, height: 6)
+        // 見出し + 角丸の背景。大きさはすべて中身 (grid) から決まる
+        let titleLabel = Ui.label("Wave\(index + 1)")
+        titleLabel.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
+        let bg = NSBox()
+        bg.boxType = .custom
+        bg.cornerRadius = 6
+        bg.borderWidth = 1
+        bg.borderColor = .separatorColor
+        bg.fillColor = NSColor.quaternaryLabelColor.withAlphaComponent(0.06)
+        bg.titlePosition = .noTitle
+        for v in [titleLabel, bg, grid] as [NSView] { v.translatesAutoresizingMaskIntoConstraints = false; addSubview(v) }
+        NSLayoutConstraint.activate([
+            titleLabel.topAnchor.constraint(equalTo: topAnchor),
+            titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            bg.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 3),
+            bg.leadingAnchor.constraint(equalTo: leadingAnchor),
+            bg.trailingAnchor.constraint(equalTo: trailingAnchor),
+            bg.bottomAnchor.constraint(equalTo: bottomAnchor),
+            grid.topAnchor.constraint(equalTo: bg.topAnchor, constant: 8),
+            grid.bottomAnchor.constraint(equalTo: bg.bottomAnchor, constant: -8),
+            grid.leadingAnchor.constraint(equalTo: bg.leadingAnchor, constant: 8),
+            grid.trailingAnchor.constraint(equalTo: bg.trailingAnchor, constant: -8),
+        ])
 
         // 単位: クリックで順に切替、右クリックでメニュー
         lFreqUnit.toolTip = "クリック: Hz / Sa(周期サンプル数) 切替"
@@ -115,15 +134,16 @@ final class WavePanel: NSBox {
         for n in Ui.fftNs { fftMenu.addItem(ClosureMenuItem("\(n)") { Ui.fftN = n }) }
         nItem.submenu = fftMenu
         m.addItem(nItem)
-        if let b = WavePanel.multipleBase(index) {
-            let baseW = b + 1
-            let mul = NSMenuItem(title: "Wave\(baseW) の倍数", action: nil, keyEquivalent: "")
+        if index != 0 {
+            // 基準 (Wave1 か Wave5) は表示数で変わるので、開くたびに見出しを直す
+            let mul = NSMenuItem(title: "Wave1 の倍数", action: nil, keyEquivalent: "")
             let sm = NSMenu()
             for x in [2, 3, 4, 5, 6, 8, 10] {
                 sm.addItem(ClosureMenuItem("x\(x)") { [unowned self] in multipleRequested?(self, x) })
             }
             mul.submenu = sm
             m.addItem(mul)
+            mulItem = mul
         }
         m.delegate = self
         nFreq.menu = m
@@ -227,5 +247,10 @@ extension WavePanel: NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         fitItem.title = "FFT用に最適化  (\(Ui.fftN)点: \(T(Double(Ui.fs()) / Double(Ui.fftN), 5))Hz の整数倍)"
         for it in fftMenu.items { it.state = it.title == "\(Ui.fftN)" ? .on : .off }
+        if let mul = mulItem {
+            let b = WavePanel.multipleBase(index)
+            mul.isHidden = b == nil
+            if let b = b { mul.title = "Wave\(b + 1) の倍数" }
+        }
     }
 }
