@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>WaveGenFS</string>
+    <key>CFBundleDisplayName</key>
+    <string>WaveGenFS</string>
+    <key>CFBundleIdentifier</key>
+    <string>jp.shinjo.WaveGenFS</string>
+    <key>CFBundleExecutable</key>
+    <string>WaveGenFS</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>ja</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>音声テスト信号発生器 (Windows 版 WaveGenFS の Mac 移植)</string>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>WaveGenFS 設定</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>jp.shinjo.wavegenfs.settings</string>
+            </array>
+        </dict>
+    </array>
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>jp.shinjo.wavegenfs.settings</string>
+            <key>UTTypeDescription</key>
+            <string>WaveGenFS 設定</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.json</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>wgfs</string>
+                </array>
+            </dict>
+        </dict>
+    </array>
+</dict>
+</plist>
