@@ -42,7 +42,11 @@ if [[ "$1" == "--release" ]]; then
            --version "$VER" "$STAGE/WaveGenFS-component.pkg" >/dev/null 2>&1
   # インストーラー: タイトル・使用許諾 (GPL v3)・インストール先 /Applications
   mkdir -p "$STAGE/res"
-  cp LICENSE "$STAGE/res/LICENSE.txt"
+  # 使用許諾の画面: README の免責事項 + GPL v3 本文
+  { echo "WaveGenFS 低周波信号発生器"; echo "Copyright (C) 2026 Kazu Shinjo (JA6FUF/JH1XHX)"; echo
+    sed -n '/^## 免責事項/,/^## /p' README.md | sed '$d'
+    echo "## ライセンス"; echo "GPL v3 (GNU General Public License version 3)。本文は以下のとおり。"; echo
+    cat LICENSE; } > "$STAGE/res/LICENSE.txt"
   cat > "$STAGE/distribution.xml" <<XML
 <?xml version="1.0" encoding="utf-8"?>
 <installer-gui-script minSpecVersion="2">
