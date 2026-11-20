@@ -23,7 +23,9 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>ja</string>
     <key>NSHumanReadableCopyright</key>
-    <string>低周波信号発生器 (Windows 版 WaveGenFS の Mac 移植)</string>
+    <string>低周波信号発生器
+Copyright © 2026 Kazu Shinjo (JA6FUF/JH1XHX)
+GPL v3 ライセンス (無保証)</string>
     <key>CFBundleDocumentTypes</key>
     <array>
         <dict>

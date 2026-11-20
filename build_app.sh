@@ -29,7 +29,11 @@ if [[ "$1" == "--release" ]]; then
   mkdir -p dist
   ZIP="dist/WaveGenFS-mac-$VER.zip"
   rm -f "$ZIP"
-  ditto -c -k --keepParent "$APP" "$ZIP"
+  STAGE=$(mktemp -d)
+  ditto "$APP" "$STAGE/$APP"
+  cp LICENSE README.md "$STAGE/"
+  (cd "$STAGE" && ditto -c -k --norsrc . "$OLDPWD/$ZIP")
+  rm -rf "$STAGE"
   echo "$ZIP"
   exit 0
 fi

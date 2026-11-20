@@ -51,3 +51,9 @@ F キーは「システム設定 → キーボード → F1、F2 などのキー
 ./build_app.sh --release  # 配布用 zip を dist/ に作る
 ```
 macOS 13 以降。Xcode (またはコマンドラインツール) の Swift が必要。
+
+## ライセンス
+GPL v3 (GNU General Public License version 3)。本文は [LICENSE](LICENSE)。
+Copyright (C) 2026 Kazu Shinjo (JA6FUF/JH1XHX)
+
+このプログラムはフリーソフトウェアです。GPL v3 (またはそれ以降の版) の条件で再配布・改変できます。無保証です。
