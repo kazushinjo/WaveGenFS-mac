@@ -1,7 +1,7 @@
 #!/bin/zsh
 # WaveGenFS.app をビルドする。  ./build_app.sh            … ビルドして起動
 #                               ./build_app.sh --install  … /Applications にインストールして起動
-#                               ./build_app.sh --release  … 配布用 zip (dist/) を作る (起動しない)
+#                               ./build_app.sh --release  … 配布用 zip (dist/) と WaveGenFS-mac.pkg / .dmg を作る (起動しない)
 # 実行ファイルは Universal (Apple シリコン / Intel 両対応)
 set -e
 cd "$(dirname "$0")"
@@ -35,6 +35,37 @@ if [[ "$1" == "--release" ]]; then
   (cd "$STAGE" && ditto -c -k --norsrc . "$OLDPWD/$ZIP")
   rm -rf "$STAGE"
   echo "$ZIP"
+  # リポジトリ直下に掲載するインストーラー (.pkg: /Applications へ入れる) とディスクイメージ (.dmg)
+  STAGE=$(mktemp -d)
+  ditto "$APP" "$STAGE/root/$APP"
+  pkgbuild --root "$STAGE/root" --install-location /Applications --identifier jp.shinjo.WaveGenFS \
+           --version "$VER" "$STAGE/WaveGenFS-component.pkg" >/dev/null 2>&1
+  # インストーラー: タイトル・使用許諾 (GPL v3)・インストール先 /Applications
+  mkdir -p "$STAGE/res"
+  cp LICENSE "$STAGE/res/LICENSE.txt"
+  cat > "$STAGE/distribution.xml" <<XML
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+    <title>WaveGenFS 低周波信号発生器 $VER</title>
+    <license file="LICENSE.txt"/>
+    <options customize="never" require-scripts="false" hostArchitectures="arm64,x86_64"/>
+    <domains enable_localSystem="true"/>
+    <volume-check><allowed-os-versions><os-version min="13.0"/></allowed-os-versions></volume-check>
+    <choices-outline><line choice="default"/></choices-outline>
+    <choice id="default" title="WaveGenFS"><pkg-ref id="jp.shinjo.WaveGenFS"/></choice>
+    <pkg-ref id="jp.shinjo.WaveGenFS" version="$VER">WaveGenFS-component.pkg</pkg-ref>
+</installer-gui-script>
+XML
+  productbuild --distribution "$STAGE/distribution.xml" --resources "$STAGE/res" --package-path "$STAGE" \
+               WaveGenFS-mac.pkg >/dev/null 2>&1
+  mkdir -p "$STAGE/dmg"
+  ditto "$APP" "$STAGE/dmg/$APP"
+  cp LICENSE README.md "$STAGE/dmg/"
+  ln -s /Applications "$STAGE/dmg/Applications"
+  rm -f WaveGenFS-mac.dmg
+  hdiutil create -quiet -volname "WaveGenFS" -srcfolder "$STAGE/dmg" -format UDZO WaveGenFS-mac.dmg
+  rm -rf "$STAGE"
+  echo WaveGenFS-mac.pkg WaveGenFS-mac.dmg
   exit 0
 fi
 

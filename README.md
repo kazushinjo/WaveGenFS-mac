@@ -3,9 +3,15 @@
 Mac 用の低周波信号発生器 (Swift / AppKit)。Windows 版 [WaveGenFS-Win](https://github.com/kazushinjo/WaveGenFS-Win) の移植で、全画面の波形表示に対応。
 
 ## 入手
-[Releases](https://github.com/kazushinjo/WaveGenFS-mac/releases) から `WaveGenFS-mac-<版>.zip` をダウンロードして展開し、`WaveGenFS.app` を「アプリケーション」フォルダへ入れる。Apple シリコン / Intel 両対応、macOS 13 以降。
+次のどれかで入れる。Apple シリコン / Intel 両対応、macOS 13 以降。
 
-Apple の公証を受けていないため、初回は「開発元を確認できません」と出る。Finder でアプリを右クリック →「開く」で起動するか、「システム設定 → プライバシーとセキュリティ」で「このまま開く」を選ぶ。
+| ファイル | 入れ方 |
+|---|---|
+| [WaveGenFS-mac.pkg](WaveGenFS-mac.pkg) (インストーラー) | 開いて画面の指示どおり進めると「アプリケーション」に入る (使用許諾 GPL v3 の同意あり) |
+| [WaveGenFS-mac.dmg](WaveGenFS-mac.dmg) | 開いて `WaveGenFS.app` を「Applications」へドラッグ |
+| [Releases](https://github.com/kazushinjo/WaveGenFS-mac/releases) の zip | 展開して `WaveGenFS.app` を「アプリケーション」へ |
+
+Apple の公証を受けていないため、初回は「開発元を確認できません」と出る。インストーラーは Finder で右クリック →「開く」、アプリも同じく右クリック →「開く」で起動するか、「システム設定 → プライバシーとセキュリティ」で「このまま開く」を選ぶ。
 
 ## 主な機能 (Windows 版と同じ)
 - 波形合成 (Mac 版は最大 5 系統、表示数は「Wave数」で 1〜5 を選ぶ): サイン / 矩形 / 三角 / ノコギリ / パルス / パルス(+-) / ホワイト・ピンク・M系列ノイズ
@@ -48,7 +54,7 @@ F キーは「システム設定 → キーボード → F1、F2 などのキー
 ```
 ./build_app.sh            # ビルドして起動
 ./build_app.sh --install  # /Applications にインストールして起動
-./build_app.sh --release  # 配布用 zip を dist/ に作る
+./build_app.sh --release  # 配布用 zip (dist/) と WaveGenFS-mac.pkg / .dmg を作る
 ```
 macOS 13 以降。Xcode (またはコマンドラインツール) の Swift が必要。
 
