@@ -25,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func saveParam() { main.saveParamFile() }
     @objc func saveWav() { main.saveWav() }
     @objc func toggleHide() { main.toggleHide() }
+    @objc func toggleSplit() { main.toggleSplit() }
 
     private func buildMenu() {
         let bar = NSMenu()
@@ -73,6 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         sub("表示", [
             item("全画面  (F11)", #selector(NSWindow.toggleFullScreen(_:)), "f", [.command, .control]),
             item("波形のみ  (F12)", #selector(toggleHide), "l", target: self),
+            item("L/R分離表示", #selector(toggleSplit), "d", target: self),
         ])
         let win = [
             item("しまう", #selector(NSWindow.performMiniaturize(_:)), "m"),

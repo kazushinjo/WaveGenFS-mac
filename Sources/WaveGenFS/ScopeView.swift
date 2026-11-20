@@ -10,6 +10,7 @@ final class ScopeView: NSView {
     var spanIdx = 6
     var yZoomIdx = 0
     var dispCh = 0           // 0: L+R, 1: L, 2: R
+    var split = false        // L/R 分離表示 (上段 L・下段 R)
     var mono = false
     var overlay: [String] = []
     var status = ""
@@ -104,85 +105,105 @@ final class ScopeView: NSView {
         }
         let oneDec = ymax < 0.1 || (ymax * 100).truncatingRemainder(dividingBy: 1) != 0
         let leftM = size(ScopeView.pct(-ymax * 100, oneDec)).width + 8 * scale
-        let plot = NSRect(x: leftM, y: 6 * scale, width: W - leftM - 14 * scale, height: H - 6 * scale - lineH - 8 * scale)
-        if plot.width < 20 || plot.height < 20 { return }
+        let full = NSRect(x: leftM, y: 6 * scale, width: W - leftM - 14 * scale, height: H - 6 * scale - lineH - 8 * scale)
+        // L/R 分離: 上段 L・下段 R (同じ振幅スケール)
+        let isSplit = split && showL && showR
+        let gap = isSplit ? lineH * 1.2 : 0
+        var areas: [(rect: NSRect, ch: Int)] = []   // ch: 0=L, 1=R, -1=表示ch どおり
+        if isSplit {
+            let h = (full.height - gap) / 2
+            areas = [(NSRect(x: full.minX, y: full.minY, width: full.width, height: h), 0),
+                     (NSRect(x: full.minX, y: full.minY + h + gap, width: full.width, height: h), 1)]
+        } else {
+            areas = [(full, -1)]
+        }
+        if full.width < 20 || areas.contains(where: { $0.rect.height < 20 }) { return }
 
         let lw = max(1, scale * 0.8)
-        func hline(_ y: CGFloat, dashed: Bool, col: NSColor, w: CGFloat) {
+        for (ai, area) in areas.enumerated() {
+            let plot = area.rect
+            let isLast = ai == areas.count - 1
+            func hline(_ y: CGFloat, dashed: Bool, col: NSColor, w: CGFloat) {
+                g.saveGState()
+                g.setStrokeColor(col.cgColor); g.setLineWidth(w)
+                if dashed { g.setLineDash(phase: 0, lengths: [4 * w, 2 * w]) }
+                g.move(to: CGPoint(x: plot.minX, y: y)); g.addLine(to: CGPoint(x: plot.maxX, y: y)); g.strokePath()
+                g.restoreGState()
+            }
+
+            // 横線 (振幅)
+            let ystep = ScopeView.niceStep(2 * ymax, plot.height > 400 ? 8 : plot.height > 160 ? 4 : 2)
+            var ys: [Double] = []
+            var y = -floor(ymax / ystep + 1e-9) * ystep
+            while y <= ymax + 1e-9 { ys.append(y); y += ystep }
+            // 上下端の値も必ず表示 (近すぎる目盛りは省く)
+            ys.removeAll { abs(abs($0) - ymax) > 1e-9 && ymax - abs($0) < ystep * 0.4 }
+            if !ys.contains(where: { abs($0 - ymax) < 1e-9 }) { ys.append(ymax); ys.append(-ymax) }
+            for yv in ys {
+                let py = plot.minY + CGFloat((ymax - yv) / (2 * ymax)) * plot.height
+                if abs(yv) > 1e-12 && abs(abs(yv) - ymax) > 1e-9 { hline(py, dashed: true, col: gridCol, w: lw) }
+                if abs(yv) < 1e-12 { hline(py, dashed: false, col: frameCol, w: max(1, scale)) }
+                let s = ScopeView.pct(yv * 100, oneDec)
+                let sz = size(s)
+                draw(s, plot.minX - sz.width - 2 * scale, py - sz.height / 2)
+            }
+            // 縦線 (時間)。時間の数字は一番下の枠だけ
+            let xstep = ScopeView.niceStep(span, max(4, Int(plot.width / (70 * scale))))
+            var x = xstep
+            while x < span - 1e-9 {
+                let px = plot.minX + CGFloat(x / span) * plot.width
+                g.saveGState()
+                g.setStrokeColor(gridCol.cgColor); g.setLineWidth(lw); g.setLineDash(phase: 0, lengths: [4 * lw, 2 * lw])
+                g.move(to: CGPoint(x: px, y: plot.minY)); g.addLine(to: CGPoint(x: px, y: plot.maxY)); g.strokePath()
+                g.restoreGState()
+                if isLast {
+                    let s = T(x, 3)
+                    let sz = size(s)
+                    draw(s, px - sz.width / 2, plot.maxY + 2 * scale)
+                }
+                x += xstep
+            }
+            if isLast { draw("ms", plot.maxX - size("ms").width, plot.maxY + 2 * scale) }
+            g.setStrokeColor(frameCol.cgColor); g.setLineWidth(max(1, scale)); g.stroke(plot)
+
+            // 波形
             g.saveGState()
-            g.setStrokeColor(col.cgColor); g.setLineWidth(w)
-            if dashed { g.setLineDash(phase: 0, lengths: [4 * w, 2 * w]) }
-            g.move(to: CGPoint(x: plot.minX, y: y)); g.addLine(to: CGPoint(x: plot.maxX, y: y)); g.strokePath()
+            g.clip(to: plot)
+            if showR && area.ch != 0 { drawTrace(g, R, nSamp, plot, ymax, rCol, scale) }
+            if showL && area.ch != 1 { drawTrace(g, L, nSamp, plot, ymax, lCol, scale) }
             g.restoreGState()
+
+            // 凡例
+            let legend = area.ch == 0 ? "L" : area.ch == 1 ? "R" : mono ? "Mono" : dispCh == 0 ? "L  R" : dispCh == 1 ? "L" : "R"
+            let lsz = size(legend)
+            let lx = plot.maxX - lsz.width - 6 * scale, ly = plot.maxY - lsz.height - 4 * scale
+            if legend == "L  R" {
+                draw("L", lx, ly, lCol)
+                draw("R", lx + size("L  ").width, ly, rCol)
+            } else {
+                draw(legend, lx, ly, legend == "R" ? rCol : lCol)
+            }
         }
 
-        // 横線 (振幅)
-        let ystep = ScopeView.niceStep(2 * ymax, plot.height > 400 ? 8 : 4)
-        var ys: [Double] = []
-        var y = -floor(ymax / ystep + 1e-9) * ystep
-        while y <= ymax + 1e-9 { ys.append(y); y += ystep }
-        // 上下端の値も必ず表示 (近すぎる目盛りは省く)
-        ys.removeAll { abs(abs($0) - ymax) > 1e-9 && ymax - abs($0) < ystep * 0.4 }
-        if !ys.contains(where: { abs($0 - ymax) < 1e-9 }) { ys.append(ymax); ys.append(-ymax) }
-        for yv in ys {
-            let py = plot.minY + CGFloat((ymax - yv) / (2 * ymax)) * plot.height
-            if abs(yv) > 1e-12 && abs(abs(yv) - ymax) > 1e-9 { hline(py, dashed: true, col: gridCol, w: lw) }
-            if abs(yv) < 1e-12 { hline(py, dashed: false, col: frameCol, w: max(1, scale)) }
-            let s = ScopeView.pct(yv * 100, oneDec)
-            let sz = size(s)
-            draw(s, plot.minX - sz.width - 2 * scale, py - sz.height / 2)
-        }
-        // 縦線 (時間)
-        let xstep = ScopeView.niceStep(span, max(4, Int(plot.width / (70 * scale))))
-        var x = xstep
-        while x < span - 1e-9 {
-            let px = plot.minX + CGFloat(x / span) * plot.width
-            g.saveGState()
-            g.setStrokeColor(gridCol.cgColor); g.setLineWidth(lw); g.setLineDash(phase: 0, lengths: [4 * lw, 2 * lw])
-            g.move(to: CGPoint(x: px, y: plot.minY)); g.addLine(to: CGPoint(x: px, y: plot.maxY)); g.strokePath()
-            g.restoreGState()
-            let s = T(x, 3)
-            let sz = size(s)
-            draw(s, px - sz.width / 2, plot.maxY + 2 * scale)
-            x += xstep
-        }
-        draw("ms", plot.maxX - size("ms").width, plot.maxY + 2 * scale)
-        g.setStrokeColor(frameCol.cgColor); g.setLineWidth(max(1, scale)); g.stroke(plot)
-
-        // 波形
-        g.saveGState()
-        g.clip(to: plot)
-        if showR { drawTrace(g, R, nSamp, plot, ymax, rCol, scale) }
-        if showL { drawTrace(g, L, nSamp, plot, ymax, lCol, scale) }
-        g.restoreGState()
-
-        // オーバーレイ文字
-        var ty = plot.minY + 4 * scale
+        // オーバーレイ文字 (一番上の枠)
+        let top = areas[0].rect, bottom = areas[areas.count - 1].rect
+        var ty = top.minY + 4 * scale
         let statusW = status.isEmpty ? 0 : size(status).width
         let ovW = overlay.first.map { size($0).width } ?? 0
-        if statusW > 0 && ovW + statusW + 20 * scale > plot.width { ty += lineH }
+        if statusW > 0 && ovW + statusW + 20 * scale > top.width { ty += lineH }
         for line in overlay {
-            draw(line, plot.minX + 6 * scale, ty)
+            draw(line, top.minX + 6 * scale, ty)
             ty += lineH
         }
         if !status.isEmpty {
-            draw(status, plot.maxX - statusW - 6 * scale, plot.minY + 4 * scale, clip ? .red : nil)
+            draw(status, top.maxX - statusW - 6 * scale, top.minY + 4 * scale, clip ? .red : nil)
         }
         var notes: [String] = []
         if auto { notes.append("自動スケール ±\(T(ymax * 100, 3))%") }
         if waveClipped { notes.append("クリップ発生 (±100%で制限)") }
         if !notes.isEmpty {
             let a = notes.joined(separator: "   ")
-            draw(a, plot.minX + 6 * scale, plot.maxY - size(a).height - 4 * scale, waveClipped ? .red : nil)
-        }
-        let legend = mono ? "Mono" : dispCh == 0 ? "L  R" : dispCh == 1 ? "L" : "R"
-        let lsz = size(legend)
-        let lx = plot.maxX - lsz.width - 6 * scale, ly = plot.maxY - lsz.height - 4 * scale
-        if legend == "L  R" {
-            draw("L", lx, ly, lCol)
-            draw("R", lx + size("L  ").width, ly, rCol)
-        } else {
-            draw(legend, lx, ly, legend == "R" ? rCol : lCol)
+            draw(a, bottom.minX + 6 * scale, bottom.maxY - size(a).height - 4 * scale, waveClipped ? .red : nil)
         }
     }
 

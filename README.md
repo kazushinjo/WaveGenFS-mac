@@ -11,6 +11,7 @@ Mac 用の音声テスト信号発生器 (Swift / AppKit)。Windows 版 [WaveGen
 - FFT用に最適化 (Fs/N の整数倍), Wave1/5 の倍数設定 (周波数欄の右クリック)
 - WAV 保存 (16/24bit, 32bit float), 設定ファイル (*.wgfs) 保存/読込 — Windows 版と同じ形式で相互に読める
 - 全画面, 波形のみ表示, スクロールで時間軸 / ⌘+スクロールで振幅軸
+- L/R分離表示 (Mac 版で追加): 表示ch の右のボタンで L を上段・R を下段に分けて表示 (Stereo・Lch + Rch のとき)
 
 ## Mac 版での違い
 | 項目 | Mac 版 |
@@ -27,6 +28,7 @@ Mac 用の音声テスト信号発生器 (Swift / AppKit)。Windows 版 [WaveGen
 | 再生 / 停止 | F5, ⌘R |
 | 全画面 | F11, ⌃⌘F |
 | 波形のみ | F12, ⌘L |
+| L/R分離表示 | ⌘D |
 | 戻る (全画面・波形のみ解除) | Esc |
 | 設定を開く / 保存 | ⌘O / ⌘S |
 | WAV 保存 | ⌘E |

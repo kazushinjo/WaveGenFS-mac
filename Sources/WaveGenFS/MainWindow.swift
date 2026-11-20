@@ -40,7 +40,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
     private var levelLbl: [NSTextField] = []
     private let outLbl = Ui.label("")
     private var bPlay: NSButton!, bFull: NSButton!, bHide: NSButton!
-    private var chkAtt: NSButton!, chkFullVol: NSButton!
+    private var chkAtt: NSButton!, chkFullVol: NSButton!, bSplit: ClosureButton!
     private let nAttN = NumField(1, 1_000_000, 2, 1, width: 100)
     private let lAttDb = Ui.label("")
     private let tbComment = NSTextField()
@@ -198,8 +198,14 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
         updateTab()
 
         cbDisp.selectItem(at: min(max(cfg.dispCh, 0), 2))
-        cbDisp.onChange = { [unowned self] i in cfg.dispCh = i; scope.dispCh = i; scope.needsDisplay = true }
-        var lv: [NSView] = [L("表示ch"), cbDisp, spacer(10), L("Level (dBFS rms)")]
+        cbDisp.onChange = { [unowned self] i in cfg.dispCh = i; scope.dispCh = i; updateSplit() }
+        bSplit = ClosureButton(title: "L/R分離", target: nil, action: nil)
+        bSplit.setButtonType(.pushOnPushOff)
+        bSplit.bezelStyle = .rounded
+        bSplit.state = cfg.splitLR ? .on : .off
+        bSplit.onClick = { [unowned self] b in cfg.splitLR = b.state == .on; updateSplit() }
+        bSplit.toolTip = "L と R を上下に分けて表示 (表示ch が Lch + Rch・Stereo のとき) (⌘D)"
+        var lv: [NSView] = [L("表示ch"), cbDisp, bSplit, spacer(10), L("Level (dBFS rms)")]
         for i in 0..<Synth.nWaves {
             lv.append(L("\(i + 1):"))
             let l = NSTextField(labelWithString: "")
@@ -216,6 +222,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
         scope.spanIdx = min(max(cfg.spanIdx, 0), ScopeView.spans.count - 1)
         scope.yZoomIdx = min(max(cfg.yZoomIdx, 0), ScopeView.yZooms.count - 1)
         scope.dispCh = cbDisp.indexOfSelectedItem
+        scope.split = cfg.splitLR
         scope.spanChanged = { [unowned self] in cfg.spanIdx = scope.spanIdx; cfg.yZoomIdx = scope.yZoomIdx; updateScope() }
         scope.doubleClicked = { [unowned self] in
             if !isFullScreen && !controlsHidden { setControlsHidden(true); if !isFullScreen { window?.toggleFullScreen(nil) } }
@@ -260,6 +267,20 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
         let v = NSView(); v.translatesAutoresizingMaskIntoConstraints = false
         v.widthAnchor.constraint(equalToConstant: w).isActive = true
         return v
+    }
+
+    @objc func toggleSplit() {
+        bSplit.state = bSplit.state == .on ? .off : .on
+        cfg.splitLR = bSplit.state == .on
+        updateSplit()
+    }
+
+    /// L/R分離ボタンの状態を表示に反映 (Mono・単独ch表示では使えない)
+    private func updateSplit() {
+        bSplit.isEnabled = cfg.stereo && cfg.dispCh == 0
+        bSplit.bezelColor = cfg.splitLR && bSplit.isEnabled ? NSColor(srgbRed: 1, green: 220 / 255.0, blue: 140 / 255.0, alpha: 1) : nil
+        scope.split = cfg.splitLR
+        scope.needsDisplay = true
     }
 
     @objc private func tabChanged() { cfg.tabIdx = tabSel.selectedSegment; updateTab() }
@@ -352,6 +373,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
         }
         scope.waveClipped = clipped
         scope.L = L; scope.R = R; scope.fs = fs; scope.mono = !cfg.stereo
+        if bSplit != nil { updateSplit() }
         scope.overlay = model.waves.enumerated().compactMap { i, p in p.summary().map { "W\(i + 1): \($0)" } }
         updateStatus()
         scope.needsDisplay = true
