@@ -24,6 +24,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
     static let fsList = [8000, 11025, 16000, 22050, 32000, 44100, 48000, 88200, 96000, 176400, 192000, 384000]
     static let bitsNames = ["16", "24", "32 float"]
     static let bitsList = [16, 24, 32]
+    /// 画面に出す波形の数 (Wave1, Wave2)。設定ファイルは Windows 版と同じ 8 系統のまま、3 以降は常に OFF
+    static let usedWaves = 2
 
     private let settingsURL: URL = {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("WaveGenFS")
@@ -49,12 +51,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
     private let cbCh = ClosurePopup.make(["Stereo", "Mono"], width: 85)
     private let cbDev = ClosurePopup.make([], width: 230)
     private let cbDisp = ClosurePopup.make(["Lch + Rch", "Lch", "Rch"], width: 100)
-    private let tabSel = NSSegmentedControl(labels: ["Wave 1,2,3,4", "Wave 5,6,7,8"], trackingMode: .selectOne, target: nil, action: nil)
     private let nLen = NumField(0.1, 36000, 1, 1, width: 80)
     private let nLat = NumField(20, 2000, 0, 10, width: 72)
     private var devices: [AudioOut.Device] = []
     private var controlsStack: NSStackView!
-    private var panelRows: [NSStackView] = []
     private var meterTimer: Timer?
     private var holdL: Float = 0, holdR: Float = 0, clipHold = false, clipUntil = Date()
     private var controlsHidden = false
@@ -90,6 +90,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
             w[0].type = .sine; w[0].ampDb = -10
             cfg.waves = w
         }
+        for i in MainWindowController.usedWaves..<Synth.nWaves { cfg.waves![i] = WaveParams() }
         model = WaveModel(cfg.waves!)
     }
 
@@ -176,26 +177,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
             }
             panels.append(p)
         }
-        for page in 0..<2 {
-            let r = Ui.hstack(Array(panels[page * 4..<page * 4 + 4]), spacing: 8)
-            r.alignment = .top
-            panelRows.append(r)
-        }
-        tabSel.target = self; tabSel.action = #selector(tabChanged)
-        tabSel.selectedSegment = min(max(cfg.tabIdx, 0), 1)
-        let panelHolder = NSView()
-        panelHolder.translatesAutoresizingMaskIntoConstraints = false
-        for r in panelRows {
-            r.translatesAutoresizingMaskIntoConstraints = false
-            panelHolder.addSubview(r)
-            NSLayoutConstraint.activate([
-                r.topAnchor.constraint(equalTo: panelHolder.topAnchor),
-                r.leadingAnchor.constraint(equalTo: panelHolder.leadingAnchor),
-                r.bottomAnchor.constraint(equalTo: panelHolder.bottomAnchor),
-                r.trailingAnchor.constraint(lessThanOrEqualTo: panelHolder.trailingAnchor),
-            ])
-        }
-        updateTab()
+        let panelRow = Ui.hstack(Array(panels[0..<MainWindowController.usedWaves]), spacing: 8)
+        panelRow.alignment = .top
 
         cbDisp.selectItem(at: min(max(cfg.dispCh, 0), 2))
         cbDisp.onChange = { [unowned self] i in cfg.dispCh = i; scope.dispCh = i; updateSplit() }
@@ -207,6 +190,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
         bSplit.toolTip = "L と R を上下に分けて表示 (表示ch が Lch + Rch・Stereo のとき) (⌘D)"
         var lv: [NSView] = [L("表示ch"), cbDisp, bSplit, spacer(10), L("Level (dBFS rms)")]
         for i in 0..<Synth.nWaves {
+            if i >= MainWindowController.usedWaves { levelLbl.append(NSTextField(labelWithString: "")); continue }
             lv.append(L("\(i + 1):"))
             let l = NSTextField(labelWithString: "")
             l.alignment = .right
@@ -230,7 +214,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
         }
         scope.toolTip = "スクロール: 時間軸  ⌘+スクロール: 振幅軸  ダブルクリック: 全画面波形表示\nF11: 全画面  F12: 波形のみ  Esc: 戻る  F5: 再生/停止"
 
-        controlsStack = NSStackView(views: [row1, row2, tabSel, panelHolder, levelRow])
+        controlsStack = NSStackView(views: [row1, row2, panelRow, levelRow])
         controlsStack.orientation = .vertical
         controlsStack.alignment = .leading
         controlsStack.spacing = 6
@@ -281,11 +265,6 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
         bSplit.bezelColor = cfg.splitLR && bSplit.isEnabled ? NSColor(srgbRed: 1, green: 220 / 255.0, blue: 140 / 255.0, alpha: 1) : nil
         scope.split = cfg.splitLR
         scope.needsDisplay = true
-    }
-
-    @objc private func tabChanged() { cfg.tabIdx = tabSel.selectedSegment; updateTab() }
-    private func updateTab() {
-        for (i, r) in panelRows.enumerated() { r.isHidden = i != tabSel.selectedSegment }
     }
 
     @objc private func commentChanged() { cfg.comment = String(tbComment.stringValue.prefix(80)) }
@@ -507,8 +486,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
             }
             let wasPlaying = player.isPlaying
             if wasPlaying { stopPlay() }
+            let dropped = (MainWindowController.usedWaves..<Synth.nWaves).filter { (ws[$0]?.type ?? .off) != .off }
             for i in 0..<Synth.nWaves {
-                model.waves[i] = ws[i] ?? WaveParams()
+                model.waves[i] = i < MainWindowController.usedWaves ? ws[i] ?? WaveParams() : WaveParams()
                 details[i]?.close()
             }
             cfg.fftN = Ui.fftNs.contains(pf.fftN) ? pf.fftN : 4096
@@ -528,6 +508,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
             window?.title = "WaveGenFS - \(url.lastPathComponent)"
             NSDocumentController.shared.noteNewRecentDocumentURL(url)
             if wasPlaying { startPlay() }
+            if !dropped.isEmpty {
+                alert("Wave1・2 だけ読み込みました", "このファイルの " + dropped.map { "Wave\($0 + 1)" }.joined(separator: ", ") +
+                      " は Mac 版では使わないため OFF にしました。")
+            }
         } catch {
             alert("設定読込エラー", error.localizedDescription)
         }

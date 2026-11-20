@@ -108,7 +108,7 @@ final class WavePanel: NSBox {
         for n in Ui.fftNs { fftMenu.addItem(ClosureMenuItem("\(n)") { Ui.fftN = n }) }
         nItem.submenu = fftMenu
         m.addItem(nItem)
-        if index != 0 && index != 4 {
+        if index == 1 {
             let baseW = index < 4 ? 1 : 5
             let mul = NSMenuItem(title: "Wave\(baseW) の倍数", action: nil, keyEquivalent: "")
             let sm = NSMenu()

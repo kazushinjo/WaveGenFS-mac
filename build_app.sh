@@ -21,7 +21,9 @@ cp Info.plist "$APP/Contents/Info.plist"
 xattr -cr "$APP"   # 拡張属性が残っていると署名できない
 codesign --force --deep --sign - "$APP"
 
-pkill -x WaveGenFS 2>/dev/null || true
+# 起動中なら正常終了させる (pkill だと設定が保存されない)
+osascript -e 'tell application "WaveGenFS" to quit' 2>/dev/null || true
+for i in {1..20}; do pgrep -x WaveGenFS >/dev/null || break; sleep 0.25; done
 sleep 0.5
 
 if [[ "$1" == "--install" ]]; then
