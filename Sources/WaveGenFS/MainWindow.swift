@@ -69,7 +69,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
     init() {
         let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1100, height: 800),
                          styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-        w.title = "WaveGenFS - 音声テスト信号発生器"
+        w.title = "WaveGenFS - 低周波信号発生器"
         w.collectionBehavior = [.fullScreenPrimary]
         super.init(window: w)
         w.delegate = self

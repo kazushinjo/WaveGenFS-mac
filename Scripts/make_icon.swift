@@ -45,21 +45,21 @@ func render(_ px: Int) -> Data {
     g.move(to: CGPoint(x: body.minX, y: plot.midY)); g.addLine(to: CGPoint(x: body.maxX, y: plot.midY))
     g.strokePath()
 
-    // サイン波 (1.5 周期、光彩付き)
+    // サイン波 (3 周期、光彩付き)
     let wave = CGMutablePath()
     let x0 = body.minX + 40, x1 = body.maxX - 40, amp = plot.height / 2
-    for i in 0...400 {
-        let t = CGFloat(i) / 400
-        let p = CGPoint(x: x0 + (x1 - x0) * t, y: plot.midY + amp * sin(t * 2 * .pi * 1.5))
+    for i in 0...800 {
+        let t = CGFloat(i) / 800
+        let p = CGPoint(x: x0 + (x1 - x0) * t, y: plot.midY + amp * sin(t * 2 * .pi * 3))
         i == 0 ? wave.move(to: p) : wave.addLine(to: p)
     }
     let green = NSColor(srgbRed: 0.25, green: 1.0, blue: 0.35, alpha: 1)
     g.setLineCap(.round); g.setLineJoin(.round)
     g.saveGState()
-    g.setShadow(offset: .zero, blur: 40, color: green.withAlphaComponent(0.9).cgColor)
-    g.addPath(wave); g.setStrokeColor(green.cgColor); g.setLineWidth(34); g.strokePath()
+    g.setShadow(offset: .zero, blur: 32, color: green.withAlphaComponent(0.9).cgColor)
+    g.addPath(wave); g.setStrokeColor(green.cgColor); g.setLineWidth(26); g.strokePath()
     g.restoreGState()
-    g.addPath(wave); g.setStrokeColor(NSColor(srgbRed: 0.80, green: 1.0, blue: 0.82, alpha: 1).cgColor); g.setLineWidth(10); g.strokePath()
+    g.addPath(wave); g.setStrokeColor(NSColor(srgbRed: 0.80, green: 1.0, blue: 0.82, alpha: 1).cgColor); g.setLineWidth(8); g.strokePath()
     g.restoreGState()
 
     // 縁取り

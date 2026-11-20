@@ -1,6 +1,6 @@
 # WaveGenFS (Mac 版)
 
-Mac 用の音声テスト信号発生器 (Swift / AppKit)。Windows 版 [WaveGenFS](https://github.com/kazushinjo/WaveGenFS) の移植で、全画面の波形表示に対応。
+Mac 用の低周波信号発生器 (Swift / AppKit)。Windows 版 [WaveGenFS](https://github.com/kazushinjo/WaveGenFS) の移植で、全画面の波形表示に対応。
 
 ## 主な機能 (Windows 版と同じ)
 - 波形合成 (Mac 版は最大 5 系統、表示数は「Wave数」で 1〜5 を選ぶ): サイン / 矩形 / 三角 / ノコギリ / パルス / パルス(+-) / ホワイト・ピンク・M系列ノイズ

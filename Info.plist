@@ -23,7 +23,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>ja</string>
     <key>NSHumanReadableCopyright</key>
-    <string>音声テスト信号発生器 (Windows 版 WaveGenFS の Mac 移植)</string>
+    <string>低周波信号発生器 (Windows 版 WaveGenFS の Mac 移植)</string>
     <key>CFBundleDocumentTypes</key>
     <array>
         <dict>
