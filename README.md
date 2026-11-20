@@ -36,6 +36,9 @@ Mac 用の音声テスト信号発生器 (Swift / AppKit)。Windows 版 [WaveGen
 
 F キーは「システム設定 → キーボード → F1、F2 などのキーを標準のファンクションキーとして使用」が OFF のときは fn と一緒に押す。
 
+## アイコン
+`swift Scripts/make_icon.swift` で `Resources/AppIcon.icns` を作り直せる (サイン波・スコープ風)。
+
 ## ビルド
 ```
 ./build_app.sh            # ビルドして起動
