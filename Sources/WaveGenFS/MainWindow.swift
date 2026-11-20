@@ -24,8 +24,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
     static let fsList = [8000, 11025, 16000, 22050, 32000, 44100, 48000, 88200, 96000, 176400, 192000, 384000]
     static let bitsNames = ["16", "24", "32 float"]
     static let bitsList = [16, 24, 32]
-    /// 画面に出す波形の数 (Wave1, Wave2)。設定ファイルは Windows 版と同じ 8 系統のまま、3 以降は常に OFF
-    static let usedWaves = 2
+    /// 画面に出す波形の数 (Wave1〜4)。設定ファイルは Windows 版と同じ 8 系統のまま、3 以降は常に OFF
+    static let usedWaves = 4
 
     private let settingsURL: URL = {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("WaveGenFS")
@@ -509,7 +509,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
             NSDocumentController.shared.noteNewRecentDocumentURL(url)
             if wasPlaying { startPlay() }
             if !dropped.isEmpty {
-                alert("Wave1・2 だけ読み込みました", "このファイルの " + dropped.map { "Wave\($0 + 1)" }.joined(separator: ", ") +
+                alert("Wave1〜\(MainWindowController.usedWaves) だけ読み込みました", "このファイルの " + dropped.map { "Wave\($0 + 1)" }.joined(separator: ", ") +
                       " は Mac 版では使わないため OFF にしました。")
             }
         } catch {
