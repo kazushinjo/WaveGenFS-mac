@@ -86,6 +86,8 @@ final class WavePanel: NSView {
             grid.leadingAnchor.constraint(equalTo: bg.leadingAnchor, constant: 8),
             grid.trailingAnchor.constraint(equalTo: bg.trailingAnchor, constant: -8),
         ])
+        // 幅は中身の幅に固定 (並べる列が広いと余りの幅で引き伸ばされるため)
+        widthAnchor.constraint(equalToConstant: ceil(grid.fittingSize.width) + 16).isActive = true
 
         // 単位: クリックで順に切替、右クリックでメニュー
         lFreqUnit.toolTip = "クリック: Hz / Sa(周期サンプル数) 切替"

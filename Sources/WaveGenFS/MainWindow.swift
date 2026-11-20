@@ -180,9 +180,13 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
                 applyAll(pn.index)
             }
             p.setContentCompressionResistancePriority(.required, for: .vertical)
+            p.setContentHuggingPriority(.required, for: .horizontal)
             panels.append(p)
         }
         panelRow.orientation = .horizontal; panelRow.alignment = .top; panelRow.spacing = 8
+        panelRow.distribution = .fill
+        // 上の行の幅に合わせて引き伸ばさない (Wave数が少ないとき Wave1 だけが横に伸びていた)
+        panelRow.setHuggingPriority(.required, for: .horizontal)
         cbCount.selectItem(at: MainWindowController.usedWaves - 1)
         cbCount.toolTip = "表示する Wave の数。隠した Wave は設定を残したまま出力しない"
         cbCount.onChange = { [unowned self] i in setWaveCount(i + 1) }
