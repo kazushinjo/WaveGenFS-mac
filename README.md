@@ -1,6 +1,6 @@
 # WaveGenFS (Mac 版)
 
-Mac 用の低周波信号発生器 (Swift / AppKit)。Windows 版 [WaveGenFS](https://github.com/kazushinjo/WaveGenFS) の移植で、全画面の波形表示に対応。
+Mac 用の低周波信号発生器 (Swift / AppKit)。Windows 版 [WaveGenFS-Win](https://github.com/kazushinjo/WaveGenFS-Win) の移植で、全画面の波形表示に対応。
 
 ## 入手
 [Releases](https://github.com/kazushinjo/WaveGenFS-mac/releases) から `WaveGenFS-mac-<版>.zip` をダウンロードして展開し、`WaveGenFS.app` を「アプリケーション」フォルダへ入れる。Apple シリコン / Intel 両対応、macOS 13 以降。
