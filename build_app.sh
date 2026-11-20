@@ -75,6 +75,10 @@ for i in {1..20}; do pgrep -x WaveGenFS >/dev/null || break; sleep 0.25; done
 sleep 0.5
 
 if [[ "$1" == "--install" ]]; then
+  if [[ -e "/Applications/$APP" && ! -w "/Applications/$APP" ]]; then
+    echo "/Applications/$APP はインストーラーで入れたため上書きできません。WaveGenFS-mac.pkg で入れ直してください" >&2
+    exit 1
+  fi
   rm -rf "/Applications/$APP"
   cp -R "$APP" /Applications/
   open "/Applications/$APP"

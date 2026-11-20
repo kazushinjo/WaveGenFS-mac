@@ -6,10 +6,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         buildMenu()
+        hideMoveToIPad()
         main = MainWindowController()
         main.showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
         if let u = pendingOpen { main.loadParamFile(u); pendingOpen = nil }
+    }
+
+    /// 「iPad に移動」(Sidecar) は使わない。システムが足すメニュー項目 (緑ボタンのメニュー・ウインドウメニュー) から隠す
+    private func hideMoveToIPad() {
+        func scan(_ m: NSMenu) {
+            for it in m.items {
+                if it.title.contains("iPad") { it.isHidden = true }
+                if let sm = it.submenu { scan(sm) }
+            }
+        }
+        let nc = NotificationCenter.default
+        nc.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main) { n in
+            if let m = n.object as? NSMenu { scan(m) }
+        }
+        for name in [NSMenu.didAddItemNotification, NSMenu.didChangeItemNotification] {
+            nc.addObserver(forName: name, object: nil, queue: .main) { n in
+                guard let m = n.object as? NSMenu, let i = n.userInfo?["NSMenuItemIndex"] as? Int, i < m.numberOfItems else { return }
+                let it = m.items[i]
+                if it.title.contains("iPad") && !it.isHidden { it.isHidden = true }
+            }
+        }
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
